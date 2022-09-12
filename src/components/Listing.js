@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
+import { useAuth0 } from "@auth0/auth0-react";
 
 import { BACKEND_URL } from "../constants.js";
 
@@ -36,19 +37,51 @@ const Listing = () => {
     }
   }
 
-  const handleClick = () => {
-    axios.put(`${BACKEND_URL}/listings/${listingId}/buy`).then((response) => {
-      setListing(response.data);
+  const { loginWithRedirect, user, isAuthenticated, getAccessTokenSilently } =
+    useAuth0();
+
+  const handleClick = async () => {
+    if (isAuthenticated) {
+      console.log(user);
+      //user.email
+    } else {
+      loginWithRedirect();
+    }
+
+    const accessToken = await getAccessTokenSilently({
+      audience: process.env.REACT_APP_AUDIENCE,
+      scope: process.env.REACT_APP_SCOPE,
     });
+
+    const response = await axios.put(
+      `${BACKEND_URL}/listings/${listingId}/buy`,
+      { buyerEmail: user.email },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    setListing(response.data);
+    console.log(response.data);
+    // axios.put(`${BACKEND_URL}/listings/${listingId}/buy`, {buyerEmail: user.email}, {
+    //   headers: {
+    //     Authorization: `Bearer ${accessToken}`,
+    //   }
+    // }).then((response) => {
+    //   setListing(response.data);
+    // });
   };
 
+  console.log(listing);
   return (
     <div>
       <Link to="/">Home</Link>
       <Card bg="dark">
         <Card.Body>
           {listingDetails}
-          <Button onClick={handleClick} disabled={listing.BuyerId}>
+          <Button onClick={handleClick} disabled={listing.buyerId}>
             Buy
           </Button>
         </Card.Body>

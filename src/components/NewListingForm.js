@@ -1,8 +1,9 @@
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import { useNavigate } from "react-router-dom";
+import { useAuth0 } from "@auth0/auth0-react";
 
 import { BACKEND_URL } from "../constants";
 
@@ -14,6 +15,18 @@ const NewListingForm = () => {
   const [description, setDescription] = useState("");
   const [shippingDetails, setShippingDetails] = useState("");
   const navigate = useNavigate();
+
+  const { loginWithRedirect, user, isAuthenticated, getAccessTokenSilently } =
+    useAuth0();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log(user);
+      //user.email
+    } else {
+      loginWithRedirect();
+    }
+  }, []);
 
   const handleChange = (event) => {
     switch (event.target.name) {
@@ -39,32 +52,65 @@ const NewListingForm = () => {
     }
   };
 
-  const handleSubmit = (event) => {
+  console.log(user);
+  const handleSubmit = async (event) => {
     // Prevent default form redirect on submission
     event.preventDefault();
 
+    const accessToken = await getAccessTokenSilently({
+      audience: process.env.REACT_APP_AUDIENCE,
+      scope: process.env.REACT_APP_SCOPE,
+    });
+
     // Send request to create new listing in backend
-    axios
-      .post(`${BACKEND_URL}/listings`, {
+    const response = await axios.post(
+      `${BACKEND_URL}/listings`,
+      {
         title,
         category,
         condition,
         price,
         description,
         shippingDetails,
-      })
-      .then((res) => {
-        // Clear form state
-        setTitle("");
-        setCategory("");
-        setCondition("");
-        setPrice(0);
-        setDescription("");
-        setShippingDetails("");
+        sellerEmail: user.email,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-        // Navigate to listing-specific page after submitting form
-        navigate(`/listings/${res.data.id}`);
-      });
+    navigate(`/listings/${response.data.id}`);
+    setTitle("");
+    setCategory("");
+    setCondition("");
+    setPrice(0);
+    setDescription("");
+    setShippingDetails("");
+
+    // axios
+    //   .post(`${BACKEND_URL}/listings`, {
+    //     title,
+    //     category,
+    //     condition,
+    //     price,
+    //     description,
+    //     shippingDetails,
+    //     sellerEmail: user.email,
+    //   })
+    //   .then((res) => {
+    //     // Clear form state
+    //     setTitle("");
+    //     setCategory("");
+    //     setCondition("");
+    //     setPrice(0);
+    //     setDescription("");
+    //     setShippingDetails("");
+
+    //     // Navigate to listing-specific page after submitting form
+    //     navigate(`/listings/${res.data.id}`);
+    //   });
   };
 
   return (
